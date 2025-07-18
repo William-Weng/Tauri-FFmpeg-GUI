@@ -1,0 +1,71 @@
+name: 建立 macOS 版本
+
+on:
+  push:
+    tags:
+      - 'm*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: 建立 macOS 應用程式
+    runs-on: macos-latest
+    steps:
+      - name: 取得原始碼
+        uses: actions/checkout@v4
+
+      - name: 設定 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安裝 Rust 工具鏈
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 快取 Rust 相依套件
+        uses: Swatinem/rust-cache@v2
+
+      - name: 輸出 Node.js版本 / Rust版本
+        run: |
+          node --version 
+          rustc --version
+      
+      - name: 安裝前端相依套件 (package-lock.json)
+        run: npm ci
+
+      - name: 建置應用程式 (arm64)
+        run: npm run tauri build
+
+      - name: 列出產物目錄 (macOS)
+        run: ls src-tauri/target/release/bundle/dmg/
+
+      - name: 上傳產物
+        uses: actions/upload-artifact@v4
+        with:
+          name: FFmpegGUI-macos-arm64.dmg
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+
+      - name: 取得 dmg 檔名
+        run: echo "DMG=$(ls src-tauri/target/release/bundle/dmg/*.dmg)" >> $GITHUB_ENV
+
+      - name: 建立 Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: "macOS 版本 ${{ github.ref_name }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 上傳執行檔到 Release (arm64)
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.DMG }}
+          asset_name: FFmpegGUI-macos-arm64.dmg
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
