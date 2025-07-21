@@ -22,6 +22,9 @@
       "csp": null
     }
   },
+  "plugins": {
+    "fs": {}
+  },
   "bundle": {
     "active": true,
     "targets": "all",
