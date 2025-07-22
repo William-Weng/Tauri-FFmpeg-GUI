@@ -1,4 +1,4 @@
-name: Build and Release Multi-Platform
+name: 建立版本
 
 on:
   push:
@@ -11,161 +11,336 @@ permissions:
 
 jobs:
   create-release:
-    name: Create GitHub Release
+    name: 建立 GitHub Release
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-      - name: Create Release
+      - name: 建立 Release
         id: create_release
         uses: actions/create-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          release_name: "Release ${{ github.ref_name }}"
+          release_name: "${{ github.ref_name }}"
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build-macos:
-    name: Build macOS Application
-    runs-on: macos-latest
-    needs: create-release
-    steps:
-      - name: Get Source Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust Dependencies
-        uses: Swatinem/rust-cache@v2
-
-      - name: Output Node.js Version / Rust Version
-        run: |
-          node --version
-          rustc --version
-
-      - name: Install Frontend Dependencies (package-lock.json)
-        run: npm ci
-
-      - name: Build Application (arm64)
-        run: npm run tauri build
-
-      - name: List Artifact Directory (macOS)
-        run: ls src-tauri/target/release/bundle/dmg/
-
-      - name: Get DMG Filename
-        run: echo "DMG=$(ls src-tauri/target/release/bundle/dmg/*.dmg)" >> $GITHUB_ENV
-
-      - name: Upload Executable to Release (arm64)
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ env.DMG }}
-          asset_name: FFmpegGUI-macos-arm64.dmg
-          asset_content_type: application/octet-stream
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-windows:
-    name: Build Windows Executable
+  build-windows-x86_64:
+    name: Windows x86_64
     runs-on: windows-latest
     needs: create-release
     steps:
-      - name: Get Source Code
+      - name: 設定相關環境變數
+        run: | 
+          $target = "x86_64-pc-windows-msvc"
+          $isa = "x86_64"
+          echo "TARGET=$target" | Add-Content -Path $env:GITHUB_ENV
+          echo "FILENAME=FFmpegGUI-windows-$isa.exe" | Add-Content -Path $env:GITHUB_ENV
+          echo "FILEPATH=src-tauri/target/$target/release/tauri_ffmpeg_gui.exe" | Add-Content -Path $env:GITHUB_ENV
+
+      - name: 取得原始碼
         uses: actions/checkout@v4
 
-      - name: Setup Node.js (v20)
+      - name: 設定 Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install Rust Toolchain
+      - name: 安裝 Rust 工具鏈
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust Dependencies
+      - name: 安裝 Rust 編譯架構
+        run: rustup target add ${{ env.TARGET }}
+
+      - name: 快取 Rust 相依套件
         uses: Swatinem/rust-cache@v2
 
-      - name: Output Node.js Version / Rust Version
+      - name: 輸出 系統架構 / Node.js版本 / Rust版本
         run: |
+          echo $env:PROCESSOR_ARCHITECTURE
           node --version
           rustc --version
 
-      - name: Install Frontend Dependencies (package-lock.json)
+      - name: 安裝前端相依套件 (package-lock.json)
         run: npm ci
 
-      - name: Build Application (x86_64)
-        run: npm run tauri build
+      - name: 建置應用程式
+        run: npm run tauri build -- --target ${{ env.TARGET }}
+      
+      - name: 列出產物目錄
+        run: dir src-tauri/target/${{ env.TARGET }}/release/
 
-      - name: List Artifact Directory (Windows)
-        run: dir src-tauri/target/release/
+      - name: 上傳檔案
+        id: upload_artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILENAME }}
+          path: ${{ env.FILEPATH }}
 
-      - name: Get EXE Filename
-        run: echo "EXE=src-tauri/target/release/tauri_ffmpeg_gui.exe" | Add-Content -Path $env:GITHUB_ENV
-
-      - name: Upload Executable to Release (x86_64)
+      - name: 上傳執行檔到 Release
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ env.EXE }}
-          asset_name: FFmpegGUI-windows-x86_64.exe
+          asset_path: ${{ env.FILEPATH }}
+          asset_name: ${{ env.FILENAME }}
           asset_content_type: application/octet-stream
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build-linux:
-    name: Build Linux AppImage
-    runs-on: ubuntu-latest
+  build-windows-arm64:
+    name: Windows arm64
+    runs-on: windows-latest
     needs: create-release
     steps:
-      - name: Get Source Code
+      - name: 設定相關環境變數
+        run: | 
+          $target = "aarch64-pc-windows-msvc"
+          $isa = "arm64"
+          echo "TARGET=$target" | Add-Content -Path $env:GITHUB_ENV
+          echo "FILENAME=FFmpegGUI_windows-$isa.exe" | Add-Content -Path $env:GITHUB_ENV
+          echo "FILEPATH=src-tauri/target/$target/release/tauri_ffmpeg_gui.exe" | Add-Content -Path $env:GITHUB_ENV
+
+      - name: 取得原始碼
         uses: actions/checkout@v4
 
-      - name: Setup Node.js (v20)
+      - name: 設定 Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install Rust Toolchain
+      - name: 安裝 Rust 工具鏈
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Linux Dependencies (Ubuntu only)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils libglib2.0-dev libgirepository1.0-dev pkg-config
+      - name: 安裝 Rust 編譯架構
+        run: rustup target add ${{ env.TARGET }}
 
-      - name: Cache Rust Dependencies
+      - name: 快取 Rust 相依套件
         uses: Swatinem/rust-cache@v2
 
-      - name: Output Node.js Version / Rust Version
+      - name: 輸出 系統架構 / Node.js版本 / Rust版本
         run: |
+          echo $env:PROCESSOR_ARCHITECTURE
           node --version
           rustc --version
 
-      - name: Install Frontend Dependencies (package-lock.json)
+      - name: 安裝前端相依套件 (package-lock.json)
         run: npm ci
 
-      - name: Build Application
-        run: npm run tauri build
+      - name: 建置應用程式
+        run: npm run tauri build -- --target ${{ env.TARGET }}
+      
+      - name: 列出產物目錄
+        run: dir src-tauri/target/${{ env.TARGET }}/release/
 
-      - name: List Artifact Directory (Linux)
-        run: ls src-tauri/target/release/
+      - name: 上傳檔案
+        id: upload_artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILENAME }}
+          path: ${{ env.FILEPATH }}
 
-      - name: Get AppImage Filename
-        run: echo "APPIMAGE=src-tauri/target/release/tauri_ffmpeg_gui" >> $GITHUB_ENV
-
-      - name: Upload Executable to Release (x86_64)
+      - name: 上傳執行檔到 Release
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ env.APPIMAGE }}
-          asset_name: FFmpegGUI-linux-x86_64.AppImage
+          asset_path: ${{ env.FILEPATH }}
+          asset_name: ${{ env.FILENAME }}
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macOS-x86_64:
+    name: macOS x86_64
+    runs-on: macos-latest
+    needs: create-release
+    steps:
+      - name: 設定相關環境變數
+        run: | 
+          target="x86_64-apple-darwin"
+          isa="x86_64"
+          echo "TARGET=$target" >> $GITHUB_ENV
+          echo "FILENAME=FFmpegGUI_macOS-$isa.dmg" >> $GITHUB_ENV
+
+      - name: 取得原始碼
+        uses: actions/checkout@v4
+
+      - name: 設定 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安裝 Rust 工具鏈
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 安裝 Rust 編譯架構
+        run: rustup target add ${{ env.TARGET }}
+
+      - name: 快取 Rust 相依套件
+        uses: Swatinem/rust-cache@v2
+
+      - name: 輸出 系統架構 / Node.js版本 / Rust版本
+        run: |
+          uname -m
+          node --version
+          rustc --version
+      
+      - name: 安裝前端相依套件 (package-lock.json)
+        run: npm ci
+
+      - name: 建置應用程式
+        run: npm run tauri build -- --target ${{ env.TARGET }}
+
+      - name: 列出產物目錄
+        run: ls src-tauri/target/${{ env.TARGET }}/release/bundle/dmg/
+
+      - name: 設定 FILEPATH 變數
+        run: echo "FILEPATH=$(ls src-tauri/target/${{ env.TARGET }}/release/bundle/dmg/*.dmg)" >> $GITHUB_ENV
+
+      - name: 上傳檔案
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILENAME }}
+          path: ${{ env.FILEPATH }}
+
+      - name: 上傳執行檔到 Release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ env.FILEPATH }}
+          asset_name: ${{ env.FILENAME }}
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macOS-arm64:
+    name: macOS arm64
+    runs-on: macos-latest
+    needs: create-release
+    steps:
+      - name: 設定相關環境變數
+        run: | 
+          target="aarch64-apple-darwin"
+          isa="arm64"
+          echo "TARGET=$target" >> $GITHUB_ENV
+          echo "FILENAME=FFmpegGUI_macOS-$isa.dmg" >> $GITHUB_ENV
+
+      - name: 取得原始碼
+        uses: actions/checkout@v4
+
+      - name: 設定 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安裝 Rust 工具鏈
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 安裝 Rust 編譯架構
+        run: rustup target add ${{ env.TARGET }}
+
+      - name: 快取 Rust 相依套件
+        uses: Swatinem/rust-cache@v2
+
+      - name: 輸出 系統架構 / Node.js版本 / Rust版本
+        run: |
+          uname -m
+          node --version
+          rustc --version
+      
+      - name: 安裝前端相依套件 (package-lock.json)
+        run: npm ci
+
+      - name: 建置應用程式
+        run: npm run tauri build -- --target ${{ env.TARGET }}
+
+      - name: 列出產物目錄
+        run: ls src-tauri/target/${{ env.TARGET }}/release/bundle/dmg/
+      
+      - name: 設定 FILEPATH 變數
+        run: echo "FILEPATH=$(ls src-tauri/target/${{ env.TARGET }}/release/bundle/dmg/*.dmg)" >> $GITHUB_ENV
+
+      - name: 上傳檔案
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILENAME }}
+          path: ${{ env.FILEPATH }}
+
+      - name: 上傳執行檔到 Release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ env.FILEPATH }}
+          asset_name: ${{ env.FILENAME }}
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux-x86_64:
+    name: Linux x86_64
+    runs-on: ubuntu-latest
+    needs: create-release
+    steps:
+      - name: 設定相關環境變數
+        run: | 
+          target="x86_64-unknown-linux-gnu"
+          isa="x86_64"
+          echo "TARGET=$target" >> $GITHUB_ENV
+          echo "FILENAME=FFmpegGUI_linux-$isa.AppImage" >> $GITHUB_ENV
+
+      - name: 取得原始碼
+        uses: actions/checkout@v4
+
+      - name: 安裝 Linux 相依套件
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+
+      - name: 設定 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安裝 Rust 工具鏈
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 安裝 Rust 編譯架構
+        run: rustup target add ${{ env.TARGET }}
+
+      - name: 快取 Rust 相依套件
+        uses: Swatinem/rust-cache@v2
+
+      - name: 輸出 系統架構 / Node.js版本 / Rust版本
+        run: |
+          uname -m
+          node --version
+          rustc --version
+
+      - name: 安裝前端相依套件 (package-lock.json)
+        run: npm ci
+
+      - name: 建置應用程式
+        run: npm run tauri build -- --target ${{ env.TARGET }}
+      
+      - name: 列出產物目錄
+        run: ls src-tauri/target/${{ env.TARGET }}/release/bundle/appimage/
+
+      - name: 設定 FILEPATH 變數
+        run: echo "FILEPATH=$(ls src-tauri/target/${{ env.TARGET }}/release/bundle/appimage/*.AppImage)" >> $GITHUB_ENV
+
+      - name: 上傳產物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILENAME }}
+          path: ${{ env.FILEPATH }}
+
+      - name: 上傳執行檔到 Release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ env.FILEPATH }}
+          asset_name: ${{ env.FILENAME }}
           asset_content_type: application/octet-stream
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
