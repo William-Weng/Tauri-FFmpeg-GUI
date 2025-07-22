@@ -37,7 +37,7 @@ jobs:
           $target = "x86_64-pc-windows-msvc"
           $isa = "x86_64"
           echo "TARGET=$target" | Add-Content -Path $env:GITHUB_ENV
-          echo "FILENAME=FFmpegGUI-windows-$isa.exe" | Add-Content -Path $env:GITHUB_ENV
+          echo "FILENAME=FFmpegGUI_windows-$isa.exe" | Add-Content -Path $env:GITHUB_ENV
           echo "FILEPATH=src-tauri/target/$target/release/tauri_ffmpeg_gui.exe" | Add-Content -Path $env:GITHUB_ENV
 
       - name: 取得原始碼
