@@ -1,0 +1,39 @@
+# Dockerfile.x64 - Builder Environment
+# 這個 Dockerfile 會建立一個包含所有依賴的「建置環境」
+# 它本身不包含任何原始碼。
+# docker build --platform linux/amd64 -f Dockerfile.x64 -t tauri-builder:x64 .
+# docker run --rm -v "$(pwd):/app" -v /app/node_modules tauri-builder:x64 bash -c "npm install && npm run tauri build"
+
+# 1. 基礎映像 (預設為 amd64/x86_64)
+FROM ubuntu:22.04
+
+# 2. 環境設定
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 3. 安裝 Tauri 的所有系統依賴
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    wget \
+    file \
+    libssl-dev \
+    appmenu-registrar \
+    pkg-config \
+    libwebkit2gtk-4.1-dev \
+    libappindicator3-dev \
+    librsvg2-dev \
+    patchelf \
+    && rm -rf /var/lib/apt/lists/*
+
+# 4. 安裝 Rust
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+# 5. 安裝 Node.js 和 npm
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+RUN apt-get install -y nodejs
+
+# 6. 準備建置目錄
+WORKDIR /app
