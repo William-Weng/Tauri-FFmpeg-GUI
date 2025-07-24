@@ -287,7 +287,8 @@ jobs:
           target="x86_64-unknown-linux-gnu"
           isa="x86_64"
           echo "TARGET=$target" >> $GITHUB_ENV
-          echo "FILENAME=FFmpegGUI_linux-$isa.AppImage" >> $GITHUB_ENV
+          echo "FILENAME_RPM=FFmpegGUI_linux-$isa.rpm" >> $GITHUB_ENV
+          echo "FILENAME_DEB=FFmpegGUI_linux-$isa.deb" >> $GITHUB_ENV
 
       - name: 取得原始碼
         uses: actions/checkout@v4
@@ -324,23 +325,43 @@ jobs:
         run: npm run tauri build -- --target ${{ env.TARGET }}
       
       - name: 列出產物目錄
-        run: ls src-tauri/target/${{ env.TARGET }}/release/bundle/appimage/
+        run: |
+          ls src-tauri/target/${{ env.TARGET }}/release/bundle/rpm/
+          ls src-tauri/target/${{ env.TARGET }}/release/bundle/deb/
 
       - name: 設定 FILEPATH 變數
-        run: echo "FILEPATH=$(ls src-tauri/target/${{ env.TARGET }}/release/bundle/appimage/*.AppImage)" >> $GITHUB_ENV
+        run: |
+          echo "FILEPATH_RPM=$(ls src-tauri/target/${{ env.TARGET }}/release/bundle/rpm/*.rpm)" >> $GITHUB_ENV
+          echo "FILEPATH_DEB=$(ls src-tauri/target/${{ env.TARGET }}/release/bundle/deb/*.deb)" >> $GITHUB_ENV
 
-      - name: 上傳產物
+      - name: 上傳 RPM 產物
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.FILENAME }}
-          path: ${{ env.FILEPATH }}
+          name: ${{ env.FILENAME_RPM }}
+          path: ${{ env.FILEPATH_RPM }}
 
-      - name: 上傳執行檔到 Release
+      - name: 上傳 DEB 產物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILENAME_DEB }}
+          path: ${{ env.FILEPATH_DEB }}
+
+      - name: 上傳 RPM 到 Release
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ env.FILEPATH }}
-          asset_name: ${{ env.FILENAME }}
+          asset_path: ${{ env.FILEPATH_RPM }}
+          asset_name: ${{ env.FILENAME_RPM }}
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 上傳 DEB 到 Release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ env.FILEPATH_DEB }}
+          asset_name: ${{ env.FILENAME_DEB }}
           asset_content_type: application/octet-stream
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
