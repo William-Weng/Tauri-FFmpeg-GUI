@@ -251,6 +251,8 @@ async function initValue() {
   encodeOptions.value = video.map((item: any) => {
     return { value: item.key, label: item.key };
   });
+
+  ffmpegPath.value = json["command"] || "ffmpeg";
 }
 
 onMounted(async () => {
