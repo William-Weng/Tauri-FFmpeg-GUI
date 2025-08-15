@@ -88,9 +88,13 @@ fn encode_codec(app: AppHandle, encode: &str) -> Option<String> {
     let list = value.get("video")?.as_array()?;
 
     for item in list {
-        if item.get("key")?.as_str()? == encode {
-            return item.get("codec")?.as_str().map(|s| s.to_string());
-        }
+
+        let item = item.as_object()?;
+        let key = item.get("key")?.as_str()?;
+        let codec = item.get("value")?.as_str()?;
+        if key != encode { continue; }
+
+        return Some(codec.to_string());
     }
 
     None
