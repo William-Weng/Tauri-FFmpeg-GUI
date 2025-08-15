@@ -8,10 +8,15 @@ use std::{
     sync::Mutex,
 };
 
-use tauri::Window;
+use tauri::{ 
+    Window,
+    AppHandle,
+};
+
 use once_cell::sync::Lazy;
 
 use library::{
+    _file::read_file,
     _error::io_error_maker, 
     _path::file_exists,
     _tauri::emit_payload,
@@ -24,7 +29,6 @@ use utility::{
 };
 
 static GLOBAL_PID: Lazy<Mutex<Option<u32>>> = Lazy::new(|| Mutex::new(None));
-
 
 /// 處理執行command的log訊息
 /// # 參數
@@ -74,6 +78,7 @@ fn global_pid_lock() -> std::sync::MutexGuard<'static, Option<u32>> {
 
 /// 開始轉換任務的動作
 /// # 參數
+/// - `app`: Tauri 應用的 AppHandle
 /// - `window` - Tauri 的 Window 物件，用來發送事件
 /// - `command` - ffmpeg 命令字串，通常為 "/opt/homebrew/bin/ffmpeg"
 /// - `path` - 檔案路徑
@@ -82,7 +87,7 @@ fn global_pid_lock() -> std::sync::MutexGuard<'static, Option<u32>> {
 /// - `format` - 輸出檔案格式，例如 "mp4", "mkv"
 /// - `encode` - 編碼格式，例如 "h264", "h265", "copy"
 /// - `scale` - 影片尺寸，例如 "320:240", "1290:1080"
-fn start_convert_action(window: Window, command: &str, path: &str, start_time: &str, end_time: &str, format: &str, encode: &str, scale: &str) {
+fn start_convert_action(app: AppHandle, window: Window, command: &str, path: &str, start_time: &str, end_time: &str, format: &str, encode: &str, scale: &str) {
 
     let window_clone = window.clone();
 
@@ -91,7 +96,7 @@ fn start_convert_action(window: Window, command: &str, path: &str, start_time: &
         emit_payload(&window_clone, "error", format!("{:?}", error)); return;
     }
 
-    let (mut cmd, cmd_str) = match ffmpeg_command_maker(command, path, start_time, end_time, format, encode, scale) {
+    let (mut cmd, cmd_str) = match ffmpeg_command_maker(app, command, path, start_time, end_time, format, encode, scale) {
         Ok(result) => result,
         Err(error) => { emit_payload(&window_clone, FFmpegEvent::Error.as_str(), format!("{:?}", error)); return; },
     };
@@ -132,8 +137,8 @@ fn start_convert_action(window: Window, command: &str, path: &str, start_time: &
 }
 
 #[tauri::command]
-fn start_convert(window: Window, command: &str, path: &str, start_time: &str, end_time: &str, format: &str, encode: &str, scale: &str) {
-    start_convert_action(window, command, path, start_time, end_time, format, encode, scale); 
+fn start_convert(app: AppHandle, window: Window, command: &str, path: &str, start_time: &str, end_time: &str, format: &str, encode: &str, scale: &str) {
+    start_convert_action(app, window, command, path, start_time, end_time, format, encode, scale); 
 }
 
 #[tauri::command]
@@ -144,11 +149,22 @@ fn stop_convert() {
     if let Some(pid) = pid_opt.take() { kill_process(pid); }
 }
 
+/// 讀取JSON檔案資料夾檔名列表
+/// ## 參數
+/// - `app`: Tauri 應用的 AppHandle
+/// - `filename`: 檔案名稱
+/// ## 返回
+/// - `String`: 成功時返回記錄的 JSON 字符串，失敗
+#[tauri::command]
+fn read_json_file(app: AppHandle, filename: &str) -> Result<String, String> {
+    read_file(app, "config", filename)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![start_convert, stop_convert])
+        .invoke_handler(tauri::generate_handler![start_convert, stop_convert, read_json_file])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

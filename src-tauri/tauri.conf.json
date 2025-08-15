@@ -35,6 +35,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": [
+      "config/*"
+    ],
     "windows": {
       "wix": {
         "language": "zh-TW"

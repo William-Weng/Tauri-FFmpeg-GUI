@@ -11,6 +11,7 @@ enum TauriEvent {
 enum RustApi {
   StartConvert = "start_convert",
   StopConvert = "stop_convert",
+  ReadJsonFile = "read_json_file"
 }
 
 enum FFmpegEvent {
@@ -37,18 +38,13 @@ const watchLogs = computed(() => {
   return [...logs.value];
 });
 
-const formatOptions = [
-  { value: "ts", label: ".ts" },
-  { value: "mp4", label: ".mp4" },
-  { value: "mkv", label: ".mkv" },
-  { value: "mov", label: ".mov" },
-];
+let formatOptions = ref([
+  { value: "ts", label: ".ts" }
+]);
 
-const encodeOptions = [
+let encodeOptions = ref([
   { value: "copy", label: "copy" },
-  { value: "h264", label: "h264" },
-  { value: "h265", label: "h265" },
-];
+]);
 
 /**
  * 註冊指令相關事件監聽 (用變數記錄下來)
@@ -219,17 +215,48 @@ function onSwitch(isSwitch: boolean) {
 }
 
 /**
+ * 讀取codec.json檔案
+ * @returns {Promise<Object>} 解析後的JSON物件
+ */
+async function readCodec() {
+
+  const json_filename = "codec.json"
+
+  try {
+    const jsonContent = await invoke(RustApi.ReadJsonFile, { 
+      filename: json_filename 
+    }) as string;
+    return JSON.parse(jsonContent);
+  } catch (error) {
+    console.error(`無法載入 ${json_filename}:`, error);
+    return {};
+  }
+}
+
+/**
  * 初始化變數值
  */
-function initValue() {
+async function initValue() {
   logs.value = [];
   isConverting.value = false;
+
+  const json = await readCodec();
+  const video = json["video"] || [];
+  const format = json["format"] || [];
+
+  formatOptions.value = format.map((item: any) => {
+    return { value: item.key, label: item.value };
+  });
+
+  encodeOptions.value = video.map((item: any) => {
+    return { value: item.key, label: item.key };
+  });
 }
 
 onMounted(async () => {
   listenDragDrop();
   await registerListener();
-  initValue();
+  await initValue();
 });
 
 onUnmounted(() => {
