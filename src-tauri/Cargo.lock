@@ -3,6 +3,22 @@
 version = 4
 
 [[package]]
+name = "FFMpeg-GUI"
+version = "0.1.1"
+dependencies = [
+ "chrono",
+ "nix 0.27.1",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-fs",
+ "tauri-plugin-opener",
+ "windows-sys 0.60.2",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3820,22 +3836,6 @@ dependencies = [
  "embed-resource",
  "indexmap 2.10.0",
  "toml 0.8.23",
-]
-
-[[package]]
-name = "tauri_ffmpeg_gui"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "nix 0.27.1",
- "once_cell",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-fs",
- "tauri-plugin-opener",
- "windows-sys 0.60.2",
 ]
 
 [[package]]
