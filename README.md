@@ -3,7 +3,7 @@
 ## 安裝執行
 ```bash
 npm install
-npm run tauri dev
+npm run tauri build
 ```
 
 https://github.com/user-attachments/assets/619b7e80-2a2e-48a3-b3f5-51dfb8d83ed1
