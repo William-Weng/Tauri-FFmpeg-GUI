@@ -2,6 +2,8 @@
 
 ## [安裝執行](https://william-weng.github.io/tags/rust/)
 ```bash
+brew install node
+brew install rust
 npm install
 npm run tauri build
 ```
