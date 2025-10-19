@@ -14,6 +14,7 @@ use tauri::{
 };
 
 use once_cell::sync::Lazy;
+use serde_json::json;
 
 use library::{
     _file::read_file,
@@ -34,7 +35,7 @@ static GLOBAL_PID: Lazy<Mutex<Option<u32>>> = Lazy::new(|| Mutex::new(None));
 /// # 參數
 /// - `child` - 執行的Child
 /// - `closure` - 取得每行log訊息後，要執行的功能
-fn child_log<F: Fn(&str)>(child: &mut Child, closure: F) {
+fn child_log<F: Fn(&char, &str)>(child: &mut Child, closure: F) {
     if let Some(mut stderr) = child.stderr.take() {
 
         // 在大多數情況下（包含 ffmpeg、sh、bash 等 CLI 工具）：
@@ -62,11 +63,14 @@ fn child_log<F: Fn(&str)>(child: &mut Child, closure: F) {
 /// # 參數
 /// - `partial` - 部分的標準輸出
 /// - `closure` - 取得每行log訊息後，要執行的功能
-fn partial_line_action<F: Fn(&str)>(partial: &mut String, closure: F) {
+fn partial_line_action<F: Fn(&char, &str)>(partial: &mut String, closure: F) {
 
     while let Some(index) = partial.find(|char| char == '\r' || char == '\n') {
+        
+        let delimit = partial.chars().nth(index).unwrap_or('\n');
         let line = partial[..index].to_string();
-        closure(&line);
+        
+        closure(&delimit, &line);
         *partial = partial[index + 1..].to_string();
     }
 }
@@ -117,8 +121,9 @@ fn start_convert_action(app: AppHandle, window: Window, command: &str, path: &st
             *global = Some(child.id());
         }
 
-        child_log(&mut child, |line| {
-            if !line.is_empty() { emit_payload(&window_clone, FFmpegEvent::Progress.as_str(), line); }
+        child_log(&mut child, |delimiter, line| {
+            let payload = json!({ "delim": delimiter.to_string(), "line": line });
+            if !line.is_empty() { emit_payload(&window_clone, FFmpegEvent::Progress.as_str(), payload); }
         });
 
         // 等待子進程結束並獲取輸出

@@ -1,6 +1,6 @@
 [package]
 name = "FFMpeg-GUI"
-version = "0.1.1"
+version = "0.1.2"
 description = "FFMpeg-GUI"
 authors = ["William"]
 edition = "2021"

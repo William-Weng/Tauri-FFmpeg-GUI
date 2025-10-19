@@ -190,8 +190,13 @@ async function handleCommandFinish() {
 async function handleCommandProgress() {
 
   return await listen<string>(FFmpegEvent.Progress, (event: any) => {
-    const payload = event.payload as string;
-    logs.value.push(payload);
+
+    const delim = event.payload.delim as string;
+    const line = event.payload.line as string;
+    
+    if (logs.value.length < 1) { logs.value.push(line); return; }
+    if (delim === '\r') { logs.value[logs.value.length - 1] = line; return ; }
+    logs.value.push(line)
   });
 }
 
