@@ -9,3 +9,6 @@ npm run tauri build
 ```
 
 https://github.com/user-attachments/assets/619b7e80-2a2e-48a3-b3f5-51dfb8d83ed1
+
+##### yml參考
+- [BongoCat](https://github.com/ayangweb/BongoCat)
