@@ -1,3 +1,5 @@
+## ⚠️ Tauri-FFmpeg-GUI 已停止維護, 請改用 [Wails-FFmpeg-GUI](https://github.com/William-Weng/Wails-FFmpeg-GUI)
+
 ## [【Tauri】大家一起來做一個簡單的影片轉檔工具吧…](https://william-weng.github.io/2025/07/tauri大家一起來做一個簡單的影片轉檔工具吧/)
 
 ## [安裝執行](https://william-weng.github.io/tags/rust/)
